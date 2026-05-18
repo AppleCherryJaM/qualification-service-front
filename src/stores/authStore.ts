@@ -5,7 +5,7 @@ import type { LoginResponse } from '../types/api'
 interface AuthState {
   token: string | null
   user: LoginResponse['user'] | null
-  isAuthenticated: boolean
+  expiresAt: number | null
   setAuth: (data: LoginResponse) => void
   logout: () => void
 }
@@ -15,23 +15,27 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       token: null,
       user: null,
-      isAuthenticated: false,
+      expiresAt: null,
       setAuth: (data) =>
         set({
           token: data.access_token,
           user: data.user,
-          isAuthenticated: true,
+          expiresAt: Date.now() + (data.expires_in * 1000),
         }),
       logout: () =>
         set({
           token: null,
           user: null,
-          isAuthenticated: false,
+          expiresAt: null,
         }),
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        expiresAt: state.expiresAt,
+      }),
     }
   )
 )

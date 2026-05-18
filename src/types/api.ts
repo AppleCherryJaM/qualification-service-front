@@ -6,6 +6,8 @@ export interface LoginDto {
 
 export interface LoginResponse {
   access_token: string
+  refresh_token?: string
+  expires_in: number
   user: {
     id: number
     email: string
@@ -60,7 +62,7 @@ export interface RegisterEmployeeDto {
   roleId?: number
 }
 
-// === EMPLOYEES ===
+// === DEPARTMENTS & POSITIONS ===
 export interface Department {
   id: number
   name: string
@@ -72,6 +74,14 @@ export interface Position {
   category?: string
 }
 
+// === TRAINING TYPES ===
+export interface TrainingType {
+  id: number
+  name: string
+  description?: string
+}
+
+// === EMPLOYEES ===
 export interface Employee {
   id: number
   tabNumber: string
@@ -100,24 +110,61 @@ export interface WorkAllowanceResponse {
   }[]
 }
 
-// === COURSES & ASSIGNMENTS (заглушки — заполнишь позже) ===
+// === COURSES ===
 export interface Course {
   id: number
   name: string
-  description?: string
-  periodMonths?: number
-  passingScore?: number
+  periodMonths: number
+  trainingTypeId: number
+  trainingType?: TrainingType
+  courseAssignments?: CourseAssignment[]
+  tests?: Test[]
 }
+
+export interface CreateCourseDto {
+  name: string
+  periodMonths: number
+  trainingTypeId: number
+}
+
+export interface UpdateCourseDto {
+  name?: string
+  periodMonths?: number
+  trainingTypeId?: number
+}
+
+// === COURSE ASSIGNMENTS ===
+export type AssignmentStatus = 'planned' | 'in_progress' | 'completed' | 'overdue'
 
 export interface CourseAssignment {
   id: number
   employeeId: number
+  employee?: Employee
   courseId: number
   course?: Course
-  plannedDate?: string
+  plannedDate: string
   factDate?: string
-  status: 'pending' | 'completed' | 'overdue'
-  result?: string
+  passed?: boolean
+  filePath?: string
+  status: AssignmentStatus
+}
+
+export interface CreateAssignmentDto {
+  employeeId: number
+  courseId: number
+  plannedDate: string
+}
+
+export interface CompleteAssignmentDto {
+  factDate: string
+  passed: boolean
+  filePath?: string
+}
+
+export interface AssignmentFilters {
+  employeeId?: number
+  status?: AssignmentStatus
+  overdue?: boolean
 }
 
 // === TESTS ===
@@ -125,6 +172,8 @@ export interface Test {
   id: number
   title: string
   passingScore: number
+  courseId?: number
+  course?: Course
   questions?: Question[]
 }
 
@@ -142,7 +191,7 @@ export interface Answer {
 }
 
 export interface TestSubmitDto {
-  answers: Record<number, number[]> // questionId -> answerIds
+  answers: Record<number, number[]>
 }
 
 export interface TestResult {
@@ -152,6 +201,28 @@ export interface TestResult {
   score: number
   passed: boolean
   completedAt: string
+}
+
+export interface CreateTestDto {
+  title: string
+  courseId: number
+  passingScore?: number
+  questions: CreateQuestionDto[]
+}
+
+export interface SubmitAnswerDto {
+  questionId: number
+  answerId: number
+}
+
+export interface SubmitTestDto {
+  employeeId: number
+  answers: SubmitAnswerDto[]
+}
+
+export interface CreateQuestionDto {
+  text: string
+  answers: { text: string; isCorrect: boolean }[]
 }
 
 // === BRIEFINGS ===
@@ -178,11 +249,58 @@ export interface Internship {
 export interface Notification {
   id: number
   employeeId: number
-  type: string
+  employee?: Employee
   message: string
-  read: boolean
+  isRead: boolean
   createdAt: string
+  courseAssignmentId?: number
+  courseAssignment?: CourseAssignment
+}
+
+export interface NotificationFilters {
+  employeeId?: number
+  isRead?: boolean
 }
 
 // === REPORTS ===
-export type ReportType = 'employees' | 'overdue' | 'department' | 'briefings' | 'regulatory'
+export type ReportType = 'employee-card' | 'debtors' | 'by-department' | 'briefing-journal' | 'regulatory'
+
+export interface ReportEmployeeCard {
+  id: number
+  fullName: string
+  tabNumber: string
+  department: string
+  position: string
+  hireDate: string
+  totalCourses: number
+  completedCourses: number
+  overdueCount: number
+  isBlocked: string
+}
+
+export interface ReportDebtor {
+  id: number
+  fullName: string
+  tabNumber: string
+  department: string
+  overdueCount: number
+  totalDebt: number
+}
+
+export interface ReportDepartment {
+  id: number
+  fullName: string
+  tabNumber: string
+  position: string
+  totalCourses: number
+  completedCourses: number
+  overdueCount: number
+}
+
+export interface ReportBriefing {
+  id: number
+  employeeName: string
+  briefingType: string
+  date: string
+  result: string
+}

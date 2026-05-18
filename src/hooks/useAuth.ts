@@ -26,10 +26,16 @@ export function useLogout() {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
 
-  return () => {
-    removeToken()
-    removeStoredUser()
-    logout()
-    navigate('/login', { replace: true })
+  return async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Игнорируем ошибки
+    } finally {
+      removeToken()
+      removeStoredUser()
+      logout()
+      navigate('/login', { replace: true })
+    }
   }
 }

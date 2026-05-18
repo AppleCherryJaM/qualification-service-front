@@ -1,15 +1,25 @@
 import axios from 'axios'
 import { API_BASE_URL, TOKEN_KEY } from '../utils/constants'
-import { LoginResponse } from '../types/api'
+import type { LoginResponse } from '../types/api'
+
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb)
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
-// Request interceptor — подстановка JWT
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(TOKEN_KEY)
@@ -21,14 +31,47 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor — обработка 401
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY)
-      window.location.href = '/login'
+  async (error) => {
+    const originalRequest = error.config
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(apiClient(originalRequest))
+          })
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const { data } = await axios.post<LoginResponse>(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        )
+
+        const newToken = data.access_token
+        localStorage.setItem(TOKEN_KEY, newToken)
+        onRefreshed(newToken)
+
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return apiClient(originalRequest)
+      } catch (refreshError) {
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
     }
+
     return Promise.reject(error)
   }
 )

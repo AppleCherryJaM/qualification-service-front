@@ -1,8 +1,10 @@
-import { AppBar, Toolbar, Typography, IconButton, Badge, Box, Menu, MenuItem } from '@mui/material'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { AppBar, Toolbar, Typography, IconButton, Box, Menu, MenuItem } from '@mui/material'
 import { Notifications as NotificationsIcon, AccountCircle, Logout as LogoutIcon } from '@mui/icons-material'
 import { useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { useLogout } from '../../hooks/useAuth'
+import { NotificationBell } from '../Notifications/NotificationBell';
 
 export function AppHeader() {
   const user = useAuthStore((s) => s.user)
@@ -31,11 +33,7 @@ export function AppHeader() {
           ИС Учёт повышения квалификации
         </Typography>
 
-        <IconButton color="inherit">
-          <Badge badgeContent={0} color="error">
-            <NotificationsIcon />
-          </Badge>
-        </IconButton>
+        <NotificationBell />
 
         <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
           <Typography variant="body2" sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
