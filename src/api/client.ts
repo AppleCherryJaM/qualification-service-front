@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { API_BASE_URL, TOKEN_KEY } from '../utils/constants'
 import { LoginResponse } from '../types/api'
+import { scheduleTokenRefresh, cancelTokenRefresh } from '../utils/token-refresh'
 
 let isRefreshing = false
 let refreshSubscribers: Array<{
@@ -30,6 +31,9 @@ export function triggerLogout() {
   console.log('[triggerLogout] called')
   if (isRedirecting) return
   isRedirecting = true
+
+  // Отменяем проактивный таймер при принудительном logout
+  cancelTokenRefresh()
 
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem('auth-storage')
@@ -92,8 +96,6 @@ apiClient.interceptors.response.use(
 
       try {
         console.log('[interceptor] calling /auth/refresh...')
-        // Важно: используем apiClient (не сырой axios) — запрос идёт через
-        // Vite прокси как относительный путь, cookie отправляется same-origin
         const { data } = await apiClient.post<LoginResponse>(
           '/auth/refresh',
           {},

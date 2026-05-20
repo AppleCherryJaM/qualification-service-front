@@ -17,7 +17,12 @@ import { TOKEN_KEY } from './utils/constants'
 function App() {
   // Ждём гидрацию вручную — onRehydrateStorage ненадёжен в некоторых версиях zustand.
   // Подписываемся на store ДО рендера и ждём пока persist восстановит данные.
-  const [isHydrated, setIsHydrated] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(() => {
+    // Синхронная проверка — если данные уже есть в localStorage,
+    // считаем гидрацию завершённой сразу
+    return !!(localStorage.getItem(TOKEN_KEY) && localStorage.getItem('auth-storage'))
+      || useAuthStore.persist.hasHydrated()
+  })
   const hydratedRef = useRef(false)
 
   useEffect(() => {
