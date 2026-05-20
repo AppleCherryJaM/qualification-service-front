@@ -11,7 +11,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
-      retry: false,              // не ретраить 401 — это работа interceptor'а
+      retry: (failureCount, error: any) => {
+        // Не ретраим обработанные ошибки (logout уже в процессе)
+        if (error?._handled) return false
+        // Ретраим 401 один раз — даём интерсептору время на рефреш
+        if (error?.response?.status === 401 && failureCount < 1) {
+          return true
+        }
+        return false
+      },
+      retryDelay: (retryCount) => retryCount * 1000,
       refetchOnWindowFocus: false,
     },
   },

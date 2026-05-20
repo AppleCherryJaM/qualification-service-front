@@ -1,19 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testsApi } from '../api/tests'
+import { useAuthStore } from '../stores/authStore'
 import type { CreateTestDto, SubmitTestDto } from '../types/api'
 
 export function useTests() {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['tests'],
     queryFn: () => testsApi.getAll().then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 
 export function useTest(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['tests', id],
     queryFn: () => testsApi.getById(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 
@@ -46,8 +52,11 @@ export function useSubmitTest() {
 }
 
 export function useTestResults(params?: { employeeId?: number; testId?: number }) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['test-results', params],
     queryFn: () => testsApi.getResults(params).then((r) => r.data),
+    enabled: isAuthenticated && !!(params?.employeeId || params?.testId),
   })
 }

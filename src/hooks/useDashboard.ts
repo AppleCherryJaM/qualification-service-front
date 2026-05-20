@@ -15,8 +15,6 @@ export function useDashboardStats() {
 
   return useQuery({
     queryKey: ['dashboard', user?.id],
-    // Не делаем запрос пока нет авторизованного пользователя —
-    // иначе запрос летит в момент гидрации когда user ещё null
     enabled: !!user,
     queryFn: () => {
       if (isAdmin || isHr) return dashboardApi.getStats()
@@ -25,6 +23,6 @@ export function useDashboardStats() {
       return dashboardApi.getStats()
     },
     refetchInterval: 60_000,
-    retry: false, // не ретраить — interceptor сам обработает 401
+    retry: false,
   })
 }

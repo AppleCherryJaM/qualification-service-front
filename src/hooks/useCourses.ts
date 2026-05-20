@@ -1,19 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { coursesApi } from '../api/courses'
+import { useAuthStore } from '../stores/authStore'
 import type { CreateCourseDto, UpdateCourseDto } from '../types/api'
 
 export function useCourses() {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['courses'],
     queryFn: () => coursesApi.getAll().then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 
 export function useCourse(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['courses', id],
     queryFn: () => coursesApi.getById(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 

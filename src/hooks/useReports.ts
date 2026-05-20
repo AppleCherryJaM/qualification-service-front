@@ -1,41 +1,54 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { reportsApi } from '../api/reports'
+import { useAuthStore } from '../stores/authStore'
 
 export function useEmployeeCard(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['reports', 'employee-card', id],
     queryFn: () => reportsApi.getEmployeeCard(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 
 export function useDebtors() {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['reports', 'debtors'],
     queryFn: () => reportsApi.getDebtors().then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 
 export function useByDepartment(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['reports', 'by-department', id],
     queryFn: () => reportsApi.getByDepartment(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 
 export function useBriefingJournal(startDate: string, endDate: string) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['reports', 'briefing-journal', startDate, endDate],
     queryFn: () => reportsApi.getBriefingJournal(startDate, endDate).then((r) => r.data),
-    enabled: !!startDate && !!endDate,
+    enabled: isAuthenticated && !!startDate && !!endDate,
   })
 }
 
 export function useRegulatory() {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['reports', 'regulatory'],
     queryFn: () => reportsApi.getRegulatory().then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 

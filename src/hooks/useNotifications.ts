@@ -1,8 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '../api/notifications'
-import { NotificationFilters } from '@/types/api';
+import { useAuthStore } from '../stores/authStore'
+import { NotificationFilters } from '@/types/api'
 
 export function useNotifications(filters?: NotificationFilters) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   const cleanFilters = filters
     ? Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined && v !== null))
     : undefined
@@ -10,6 +13,7 @@ export function useNotifications(filters?: NotificationFilters) {
   return useQuery({
     queryKey: ['notifications', cleanFilters],
     queryFn: () => notificationsApi.getAll(cleanFilters).then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 

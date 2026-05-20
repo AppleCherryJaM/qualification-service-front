@@ -1,26 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { employeesApi, type EmployeeFilters } from '../api/employees'
+import { useAuthStore } from '../stores/authStore'
 
 export function useEmployees(filters?: EmployeeFilters) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['employees', filters],
     queryFn: () => employeesApi.getAll(filters).then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 
 export function useEmployee(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['employees', id],
     queryFn: () => employeesApi.getById(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 
 export function useEmployeeAllowance(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['employees', id, 'allowance'],
     queryFn: () => employeesApi.getAllowance(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 

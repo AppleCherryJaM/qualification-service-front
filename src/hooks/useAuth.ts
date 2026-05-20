@@ -6,6 +6,7 @@ import { setToken, removeToken, setStoredUser, removeStoredUser } from '../api/c
 import type { LoginDto } from '../types/api'
 
 export function useLogin() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
   const queryClient = useQueryClient()
@@ -17,7 +18,7 @@ export function useLogin() {
       setStoredUser(data.user)
       setAuth(data)
       queryClient.setQueryData(['me'], data.user)
-      navigate('/', { replace: true })
+      // НЕ делаем navigate здесь — App.tsx сам увидит token и сделает <Navigate to="/" />
     },
   })
 }
@@ -28,20 +29,14 @@ export function useLogout() {
   const queryClient = useQueryClient()
 
   return async () => {
-    // 1. Сначала чистим локальное состояние — не зависим от ответа сервера
     removeToken()
     removeStoredUser()
     logout()
     queryClient.clear()
-
-    // 2. Редиректим
     navigate('/login', { replace: true })
 
-    // 3. Уведомляем сервер — fire-and-forget, результат нас не блокирует.
-    // Важно: НЕ await и НЕ в finally — иначе ошибка /auth/logout
-    // (например 401 при истёкшем токене) вызовет повторный logout.
     authApi.logout().catch(() => {
-      // Сервер недоступен или токен уже невалиден — нам всё равно
+      // Сервер недоступен или токен уже невалиден
     })
   }
 }

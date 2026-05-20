@@ -1,19 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { assignmentsApi } from '../api/course-assignments'
+import { useAuthStore } from '../stores/authStore'
 import type { CreateAssignmentDto, CompleteAssignmentDto, AssignmentFilters } from '../types/api'
 
 export function useAssignments(filters?: AssignmentFilters) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['assignments', filters],
     queryFn: () => assignmentsApi.getAll(filters).then((r) => r.data),
+    enabled: isAuthenticated,
   })
 }
 
 export function useAssignment(id: number) {
+  const isAuthenticated = useAuthStore((s) => !!s.token && !!s.user)
+  
   return useQuery({
     queryKey: ['assignments', id],
     queryFn: () => assignmentsApi.getById(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: isAuthenticated && !!id,
   })
 }
 

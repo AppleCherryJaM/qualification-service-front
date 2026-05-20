@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { API_BASE_URL, TOKEN_KEY } from '../utils/constants'
 import { LoginResponse } from '../types/api'
-import { scheduleTokenRefresh, cancelTokenRefresh } from '../utils/token-refresh'
+import { cancelTokenRefresh } from '../utils/token-refresh'
 
 let isRefreshing = false
 let refreshSubscribers: Array<{
@@ -9,6 +9,25 @@ let refreshSubscribers: Array<{
   reject: (error: unknown) => void
 }> = []
 let isRedirecting = false
+
+// === Глобальное состояние готовности авторизации ===
+let isAuthReady = false
+let authReadyCallbacks: Array<() => void> = []
+
+export function setAuthReady(ready: boolean): void {
+  isAuthReady = ready
+  if (ready) {
+    authReadyCallbacks.forEach((cb) => cb())
+    authReadyCallbacks = []
+  }
+}
+
+export function waitForAuthReady(): Promise<void> {
+  if (isAuthReady) return Promise.resolve()
+  return new Promise((resolve) => {
+    authReadyCallbacks.push(resolve)
+  })
+}
 
 function onRefreshed(token: string) {
   refreshSubscribers.forEach(({ resolve }) => resolve(token))
@@ -32,7 +51,6 @@ export function triggerLogout() {
   if (isRedirecting) return
   isRedirecting = true
 
-  // Отменяем проактивный таймер при принудительном logout
   cancelTokenRefresh()
 
   localStorage.removeItem(TOKEN_KEY)
@@ -43,7 +61,8 @@ export function triggerLogout() {
     useAuthStore.getState().logout()
   })
 
-  window.location.replace('/login')
+  // НЕ делаем window.location.replace здесь!
+  // App.tsx сам увидит token = null и сделает редирект через <Navigate />
 }
 
 export const apiClient = axios.create({
@@ -120,7 +139,12 @@ apiClient.interceptors.response.use(
         console.error('  data:', refreshError.response?.data)
         onRefreshFailed(refreshError)
         triggerLogout()
-        return Promise.reject(refreshError)
+        // Возвращаем "мягкую" ошибку с флагом, чтобы React Query не показывал JSON
+        return Promise.reject({
+          ...refreshError,
+          _handled: true,
+          message: 'Session expired. Redirecting to login...',
+        })
       } finally {
         isRefreshing = false
       }
