@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { LoginResponse } from '../types/api'
+import { TOKEN_KEY } from '../utils/constants'
 
 interface AuthState {
   token: string | null
   user: LoginResponse['user'] | null
-  expiresAt: number | null
   setAuth: (data: LoginResponse) => void
   logout: () => void
 }
@@ -15,27 +15,32 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       token: null,
       user: null,
-      expiresAt: null,
-      setAuth: (data) =>
-        set({
-          token: data.access_token,
-          user: data.user,
-          expiresAt: Date.now() + (data.expires_in * 1000),
-        }),
-      logout: () =>
-        set({
-          token: null,
-          user: null,
-          expiresAt: null,
-        }),
+
+      setAuth: (data) => {
+        console.log('[authStore] setAuth called, token:', data.access_token?.slice(0, 20))
+        localStorage.setItem(TOKEN_KEY, data.access_token)
+        set({ token: data.access_token, user: data.user })
+      },
+
+      logout: () => {
+        console.trace('[authStore] logout called from:')
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem('auth-storage')
+        localStorage.removeItem('user')
+        set({ token: null, user: null })
+      },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
         token: state.token,
         user: state.user,
-        expiresAt: state.expiresAt,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          localStorage.setItem(TOKEN_KEY, state.token)
+        }
+      },
     }
   )
 )

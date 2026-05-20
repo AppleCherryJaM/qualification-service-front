@@ -29,9 +29,8 @@ export function AppHeader() {
       }}
     >
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          ИС Учёт повышения квалификации
-        </Typography>
+
+        <Box sx={{ flexGrow: 1 }} />
 
         <NotificationBell />
 

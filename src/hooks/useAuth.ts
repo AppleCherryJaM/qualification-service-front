@@ -25,17 +25,23 @@ export function useLogin() {
 export function useLogout() {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const queryClient = useQueryClient()
 
   return async () => {
-    try {
-      await authApi.logout()
-    } catch {
-      // Игнорируем ошибки
-    } finally {
-      removeToken()
-      removeStoredUser()
-      logout()
-      navigate('/login', { replace: true })
-    }
+    // 1. Сначала чистим локальное состояние — не зависим от ответа сервера
+    removeToken()
+    removeStoredUser()
+    logout()
+    queryClient.clear()
+
+    // 2. Редиректим
+    navigate('/login', { replace: true })
+
+    // 3. Уведомляем сервер — fire-and-forget, результат нас не блокирует.
+    // Важно: НЕ await и НЕ в finally — иначе ошибка /auth/logout
+    // (например 401 при истёкшем токене) вызовет повторный logout.
+    authApi.logout().catch(() => {
+      // Сервер недоступен или токен уже невалиден — нам всё равно
+    })
   }
 }

@@ -12,68 +12,7 @@ import {
 import { useDashboardStats } from '../../hooks/useDashboard'
 import { useAuthStore } from '../../stores/authStore'
 import { hasRole } from '../../utils/roles'
-
-interface KpiCardProps {
-  title: string
-  value: string | number
-  subtitle?: string
-  icon: React.ReactNode
-  color: 'primary' | 'secondary' | 'error' | 'success' | 'warning' | 'info'
-  onClick?: () => void
-  trend?: { value: number; label: string }
-}
-
-function KpiCard({ title, value, subtitle, icon, color, onClick, trend }: KpiCardProps) {
-  return (
-    <Card
-      sx={{
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: 4 } : {},
-      }}
-      onClick={onClick}
-    >
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography color="text.secondary" variant="body2" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" component="div" color={`${color}.main`} sx={{ fontWeight: 'bold' }}>
-              {value}
-            </Typography>
-            {subtitle && (
-              <Typography variant="caption" color="text.secondary">
-                {subtitle}
-              </Typography>
-            )}
-            {trend && (
-              <Chip
-                size="small"
-                label={`${trend.value > 0 ? '+' : ''}${trend.value}% ${trend.label}`}
-                color={trend.value >= 0 ? 'success' : 'error'}
-                sx={{ mt: 1, height: 20 }}
-              />
-            )}
-          </Box>
-          <Box
-            sx={{
-              color: `${color}.main`,
-              bgcolor: `${color}.light`,
-              borderRadius: 2,
-              p: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  )
-}
+import { KpiCard } from '@/components/cards/KpiCard';
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -122,22 +61,38 @@ export function DashboardPage() {
       <Typography variant="h4" gutterBottom>
         Дашборд
       </Typography>
-      <Typography variant="body1" color="text.secondary" gutterBottom>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Typography variant="body1" color="text.secondary">
         Добро пожаловать, {user?.email}
-        {s.blockedEmployees > 0 && isAdmin && (
-          <Chip label={`${s.blockedEmployees} заблокировано`} color="error" size="small" sx={{ ml: 2 }} />
-        )}
       </Typography>
+      {s.blockedEmployees > 0 && isAdmin && (
+        <Chip label={`${s.blockedEmployees} заблокировано`} color="error" size="small" />
+      )}
+    </Box>
 
-    
-    <Grid container spacing={3} sx={{ mt: 1 }}>
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(6, 1fr)',  // 6 карточек в ряд
+      gap: 2,  // 16px между карточками
+      mt: 2,
+      // Адаптив:
+      '@media (max-width: 1200px)': {
+        gridTemplateColumns: 'repeat(3, 1fr)',
+      },
+      '@media (max-width: 900px)': {
+        gridTemplateColumns: 'repeat(2, 1fr)',
+      },
+      '@media (max-width: 600px)': {
+        gridTemplateColumns: '1fr',
+      },
+    }}>
       {(isAdmin || isHr) && (
         <>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
             <KpiCard
               title="Всего сотрудников"
               value={stats?.totalEmployees ?? 0}
-              icon={<PeopleIcon sx={{ fontSize: 28 }} />}
+              icon={<PeopleIcon sx={{ fontSize: 24 }} />}
               color="primary"
               onClick={() => navigate('/employees')}
             />
@@ -200,7 +155,7 @@ export function DashboardPage() {
             <KpiCard
               title="Сотрудники подразделения"
               value={stats?.totalEmployees ?? 0}
-              icon={<PeopleIcon sx={{ fontSize: 28 }} />}
+              icon={<PeopleIcon sx={{ fontSize: 24 }} />}
               color="primary"
               onClick={() => navigate('/employees')}
             />
@@ -268,7 +223,7 @@ export function DashboardPage() {
           )}
         </>
       )}
-    </Grid>
+    </Box>
 
     {/* === ПРОСРОЧКИ — ТОП-5 === */}
     {(isAdmin || isHr || isManager) && (stats?.overdueCount ?? 0) > 0 && (

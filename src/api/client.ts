@@ -1,17 +1,45 @@
 import axios from 'axios'
 import { API_BASE_URL, TOKEN_KEY } from '../utils/constants'
-import type { LoginResponse } from '../types/api'
+import { LoginResponse } from '../types/api'
 
 let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
+let refreshSubscribers: Array<{
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}> = []
+let isRedirecting = false
 
 function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers.forEach(({ resolve }) => resolve(token))
   refreshSubscribers = []
 }
 
-function addRefreshSubscriber(cb: (token: string) => void) {
-  refreshSubscribers.push(cb)
+function onRefreshFailed(error: unknown) {
+  refreshSubscribers.forEach(({ reject }) => reject(error))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(
+  resolve: (token: string) => void,
+  reject: (error: unknown) => void
+) {
+  refreshSubscribers.push({ resolve, reject })
+}
+
+export function triggerLogout() {
+  console.log('[triggerLogout] called')
+  if (isRedirecting) return
+  isRedirecting = true
+
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem('auth-storage')
+  localStorage.removeItem('user')
+
+  import('../stores/authStore').then(({ useAuthStore }) => {
+    useAuthStore.getState().logout()
+  })
+
+  window.location.replace('/login')
 }
 
 export const apiClient = axios.create({
@@ -34,15 +62,28 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    console.log('[interceptor]', error.config?.url, 'status:', error.response?.status)
+
     const originalRequest = error.config
 
+    if (originalRequest.url?.includes('/auth/')) {
+      console.log('[interceptor] skipping retry for /auth/ route')
+      return Promise.reject(error)
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log('[interceptor] 401 detected, attempting refresh...')
+
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          addRefreshSubscriber((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`
-            resolve(apiClient(originalRequest))
-          })
+        console.log('[interceptor] refresh already in progress, queuing request')
+        return new Promise((resolve, reject) => {
+          addRefreshSubscriber(
+            (token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              resolve(apiClient(originalRequest))
+            },
+            (err) => reject(err)
+          )
         })
       }
 
@@ -50,22 +91,33 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const { data } = await axios.post<LoginResponse>(
-          `${API_BASE_URL}/auth/refresh`,
+        console.log('[interceptor] calling /auth/refresh...')
+        // Важно: используем apiClient (не сырой axios) — запрос идёт через
+        // Vite прокси как относительный путь, cookie отправляется same-origin
+        const { data } = await apiClient.post<LoginResponse>(
+          '/auth/refresh',
           {},
           { withCredentials: true }
         )
 
         const newToken = data.access_token
-        localStorage.setItem(TOKEN_KEY, newToken)
-        onRefreshed(newToken)
+        console.log('[interceptor] refresh success, new token:', newToken.slice(0, 20))
 
+        localStorage.setItem(TOKEN_KEY, newToken)
+
+        import('../stores/authStore').then(({ useAuthStore }) => {
+          useAuthStore.getState().setAuth(data)
+        })
+
+        onRefreshed(newToken)
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         return apiClient(originalRequest)
-      } catch (refreshError) {
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+      } catch (refreshError: any) {
+        console.error('[interceptor] refresh FAILED')
+        console.error('  status:', refreshError.response?.status)
+        console.error('  data:', refreshError.response?.data)
+        onRefreshFailed(refreshError)
+        triggerLogout()
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

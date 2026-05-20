@@ -7,12 +7,12 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Toolbar,
   Divider,
   Box,
   IconButton,
   useMediaQuery,
   useTheme,
+  Typography,
 } from '@mui/material'
 import {
   Dashboard as DashboardIcon,
@@ -60,15 +60,42 @@ export function AppSidebar() {
 
   const drawerContent = (
     <>
-      <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', px: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          px: 2,
+          py: 1.5,
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
+          minHeight: 64,
+        }}
+      >
+        <SchoolIcon sx={{ fontSize: 28, color: 'primary.contrastText' }} />
+        <Box sx={{ overflow: 'hidden' }}>
+          <Typography
+            variant="subtitle2"
+            fontWeight="bold"
+            noWrap
+            sx={{ lineHeight: 1.3 }}
+          >
+            Учёт Квалификации
+          </Typography>
+        </Box>
         {isMobile && (
-          <IconButton onClick={() => setMobileOpen(false)}>
-            <ChevronLeftIcon />
+          <IconButton
+            onClick={() => setMobileOpen(false)}
+            sx={{ ml: 'auto', p: 0.5 }}
+          >
+            <ChevronLeftIcon fontSize="small" />
           </IconButton>
         )}
-      </Toolbar>
+      </Box>
+
       <Divider />
-      <List>
+      
+      <List sx={{ py: 1 }}>
         {filteredNav.map((item) => (
           <ListItem key={item.path} disablePadding>
             <ListItemButton

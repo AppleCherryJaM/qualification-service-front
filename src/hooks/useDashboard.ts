@@ -1,4 +1,3 @@
-// src/hooks/useDashboard.ts
 import { useQuery } from '@tanstack/react-query'
 import { dashboardApi } from '../api/dashboard'
 import { useAuthStore } from '../stores/authStore'
@@ -16,15 +15,16 @@ export function useDashboardStats() {
 
   return useQuery({
     queryKey: ['dashboard', user?.id],
+    // Не делаем запрос пока нет авторизованного пользователя —
+    // иначе запрос летит в момент гидрации когда user ещё null
+    enabled: !!user,
     queryFn: () => {
       if (isAdmin || isHr) return dashboardApi.getStats()
-      if (isManager && employeeId) {
-        // TODO: получить departmentId из профиля сотрудника
-        return dashboardApi.getManagerStats(employeeId) // временно — нужен реальный deptId
-      }
+      if (isManager && employeeId) return dashboardApi.getManagerStats(employeeId)
       if (isEmployee && employeeId) return dashboardApi.getEmployeeStats(employeeId)
       return dashboardApi.getStats()
     },
-    refetchInterval: 60000, // обновляем каждую минуту
+    refetchInterval: 60_000,
+    retry: false, // не ретраить — interceptor сам обработает 401
   })
 }
