@@ -12,8 +12,6 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Все запросы /auth, /users, /employees и т.д. проксируются на бэкенд
-      // Фронт думает что обращается к localhost:5173 — cookie работает как same-site
       '/auth': {
         target: 'http://localhost:5004',
         changeOrigin: true,
@@ -29,7 +27,22 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/departments': {
+        target: 'http://localhost:5004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/positions': {
+        target: 'http://localhost:5004',
+        changeOrigin: true,
+        secure: false,
+      },
       '/courses': {
+        target: 'http://localhost:5004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/training-types': {
         target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,
@@ -40,6 +53,16 @@ export default defineConfig({
         secure: false,
       },
       '/tests': {
+        target: 'http://localhost:5004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/briefings': {
+        target: 'http://localhost:5004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/internships': {
         target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,

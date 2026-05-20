@@ -14,6 +14,11 @@ import { ReportsPage } from './pages/Reports/ReportsPage'
 import { NotFoundPage } from './pages/NotFound/NotFoundPage'
 import { CircularProgress, Box } from '@mui/material'
 import { TOKEN_KEY } from './utils/constants'
+import { DepartmentsPage } from './pages/DepartmentsPge/DepartmentsPage';
+import { PositionsPage } from './pages/PositionsPage/PositionsPage';
+import { TrainingTypesPage } from './pages/TrainigTypesPage/TrainingTypesPage';
+import { BriefingsPage } from './pages/Briefings/BriefingsPage';
+import { InternshipsPage } from './pages/InternshipsPage/InternshipsPage';
 
 function App() {
   const navigate = useNavigate()
@@ -128,6 +133,11 @@ function App() {
         <Route path="tests" element={<TestsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="positions" element={<PositionsPage />} />
+        <Route path="training-types" element={<TrainingTypesPage />} />
+        <Route path="briefings" element={<BriefingsPage />} />
+        <Route path="internships" element={<InternshipsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

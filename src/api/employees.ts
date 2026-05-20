@@ -2,8 +2,8 @@ import { apiClient } from './client'
 import type { Employee, WorkAllowanceResponse } from '../types/api'
 
 export interface EmployeeFilters {
-  departmentId?: number
-  positionId?: number
+  departmentId?: number | null
+  positionId?: number | null
 }
 
 export const employeesApi = {

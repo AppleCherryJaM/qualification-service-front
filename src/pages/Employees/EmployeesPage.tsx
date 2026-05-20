@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react'
 import {
   Box,
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   Alert,
   CircularProgress,
 } from '@mui/material'
@@ -28,6 +28,10 @@ import { useAuthStore } from '../../stores/authStore'
 import { RoleGuard } from '../../components/RoleGuard/RoleGuard'
 import { PERMISSIONS, hasRole } from '../../utils/roles'
 import type { Employee } from '../../types/api'
+import { useDepartments } from '../../hooks/useDepartments'
+import { usePositions } from '../../hooks/usePositions'
+import { useCreateEmployee, useUpdateEmployee } from '../../hooks/useEmployees'
+import { EmployeeFormModal } from '@/components/modal/EmployeeModal';
 
 export function EmployeesPage() {
   const user = useAuthStore((s) => s.user)
@@ -37,10 +41,17 @@ export function EmployeesPage() {
   const [pagination, setPagination] = useState<GridPaginationModel>({ page: 0, pageSize: 10 })
   const [sortModel, setSortModel] = useState<GridSortModel>([{ field: 'fullName', sort: 'asc' }])
   const [filters, setFilters] = useState<{ departmentId?: number; positionId?: number }>({})
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
 
   const { data: employees, isLoading, error } = useEmployees(isManagerOnly ? { departmentId: user?.employeeId } : filters)
   const deleteEmployee = useDeleteEmployee()
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const { data: departments } = useDepartments()
+  const { data: positions } = usePositions()
+  const createEmployee = useCreateEmployee()
+  const updateEmployee = useUpdateEmployee()
+
 
   const handleDelete = () => {
     if (deleteId !== null) {
@@ -95,7 +106,7 @@ export function EmployeesPage() {
       renderCell: (params) => (
         <Box>
           <Tooltip title="Редактировать">
-            <IconButton size="small" color="primary">
+            <IconButton size="small" color="primary" onClick={() => { setEditingEmployee(params.row); setFormOpen(true); }}>
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -120,7 +131,7 @@ export function EmployeesPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Сотрудники</Typography>
         <RoleGuard allowedRoles={PERMISSIONS.EMPLOYEES_CREATE}>
-          <Button variant="contained" startIcon={<AddIcon />}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditingEmployee(undefined); setFormOpen(true); }}>
             Добавить
           </Button>
         </RoleGuard>
@@ -168,6 +179,22 @@ export function EmployeesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <EmployeeFormModal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditingEmployee(undefined); }}
+        initialData={editingEmployee}
+        departments={departments}
+        positions={positions}
+        onSubmit={(data) => {
+          if (editingEmployee) {
+            updateEmployee.mutate({ id: editingEmployee.id, data }, { onSuccess: () => setFormOpen(false) })
+          } else {
+            createEmployee.mutate(data, { onSuccess: () => setFormOpen(false) })
+          }
+        }}
+        isPending={createEmployee.isPending || updateEmployee.isPending}
+      />
     </Box>
   )
 }

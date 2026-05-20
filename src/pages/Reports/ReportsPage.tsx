@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Box, Typography, Paper, Tabs, Tab, Button, TextField,
-  Alert, CircularProgress, Card, CardContent, Grid, Divider,
+  CircularProgress, Card, CardContent, Grid, Divider,
 } from '@mui/material'
 import {
-  Download as DownloadIcon, PictureAsPdf as PdfIcon,
-  Assessment as AssessmentIcon, People as PeopleIcon,
-  Warning as WarningIcon, Business as BusinessIcon,
-  Book as BookIcon, Verified as VerifiedIcon,
+  Download as DownloadIcon,
+  People as PeopleIcon,
+  Warning as WarningIcon,
+  Business as BusinessIcon,
+  Book as BookIcon,
+  Verified as VerifiedIcon,
 } from '@mui/icons-material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import {
@@ -16,7 +18,8 @@ import {
   useDownloadEmployeeCard, useDownloadDebtors, useDownloadByDepartment,
   useDownloadBriefingJournal, useDownloadRegulatory,
 } from '../../hooks/useReports'
-import { useEmployees } from '../../hooks/useEmployees'
+import { useDepartments } from '../../hooks/useDepartments'
+import { useEmployee } from '../../hooks/useEmployees'
 import { useAuthStore } from '../../stores/authStore'
 import { hasRole } from '../../utils/roles'
 
@@ -27,38 +30,72 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 }
 
 export function ReportsPage() {
-  const [tab, setTab] = useState(0)
   const user = useAuthStore((s) => s.user)
-  const isManager = hasRole(user?.roles || [], ['manager']) && !hasRole(user?.roles || [], ['admin', 'hr'])
-  const managerDeptId = isManager ? user?.employeeId : undefined // TODO: получить departmentId из employee
+  const userRoles = user?.roles || []
 
-  // Employee Card
+  const isAdmin = hasRole(userRoles, ['admin'])
+  const isHr = hasRole(userRoles, ['hr'])
+  const isManager = hasRole(userRoles, ['manager']) && !isAdmin && !isHr
+
+  // === ВИДИМЫЕ ТАБЫ ===
+  const visibleTabs = isManager
+    ? [{ index: 2, icon: <BusinessIcon />, label: 'По отделу' }]
+    : [
+        { index: 0, icon: <PeopleIcon />, label: 'Карточка сотрудника' },
+        { index: 1, icon: <WarningIcon />, label: 'Должники' },
+        { index: 2, icon: <BusinessIcon />, label: 'По отделу' },
+        { index: 3, icon: <BookIcon />, label: 'Журнал инструктажей' },
+        { index: 4, icon: <VerifiedIcon />, label: 'Регламентный' },
+      ]
+
+  const [tab, setTab] = useState(isManager ? 2 : 0)
+  const effectiveTab = isManager ? 2 : tab
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    if (!isManager) setTab(newValue)
+  }
+
+  // === ДАННЫЕ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (для менеджера) ===
+  const { data: currentEmployee } = useEmployee(user?.employeeId ?? 0)
+  const managerDeptId = isManager ? currentEmployee?.departmentId : undefined
+
+  // === СПРАВОЧНИКИ ===
+  const { data: departments } = useDepartments()
+
+  // === Employee Card ===
   const [cardId, setCardId] = useState('')
   const { data: cardData, isLoading: cardLoading } = useEmployeeCard(parseInt(cardId) || 0)
   const downloadCard = useDownloadEmployeeCard()
 
-  // Debtors
+  // === Debtors ===
   const { data: debtors, isLoading: debtorsLoading } = useDebtors()
   const downloadDebtors = useDownloadDebtors()
 
-  // By Department
+  // === By Department ===
   const [deptId, setDeptId] = useState('')
-  const { data: deptData, isLoading: deptLoading } = useByDepartment(parseInt(deptId) || 0)
+  const { data: deptData, isLoading: deptLoading } = useByDepartment(
+    parseInt(deptId) || managerDeptId || 0
+  )
   const downloadDept = useDownloadByDepartment()
-  const { data: employees } = useEmployees()
 
-  // Briefing Journal
+  // Автовыбор отдела для менеджера
+  useEffect(() => {
+    if (isManager && managerDeptId && !deptId) {
+      setDeptId(String(managerDeptId))
+    }
+  }, [isManager, managerDeptId, deptId])
+
+  // === Briefing Journal ===
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const { data: briefings, isLoading: briefLoading } = useBriefingJournal(startDate, endDate)
   const downloadBriefings = useDownloadBriefingJournal()
 
-  // Regulatory
+  // === Regulatory ===
   const { data: regulatory, isLoading: regLoading } = useRegulatory()
   const downloadRegulatory = useDownloadRegulatory()
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => setTab(newValue)
-
+  // === КОЛОНКИ ===
   const debtorsColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
     { field: 'fullName', headerName: 'ФИО', width: 200 },
@@ -82,81 +119,88 @@ export function ReportsPage() {
       <Typography variant="h4" gutterBottom>Отчёты</Typography>
 
       <Paper sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab icon={<PeopleIcon />} label="Карточка сотрудника" />
-          <Tab icon={<WarningIcon />} label="Должники" />
-          <Tab icon={<BusinessIcon />} label="По отделу" />
-          <Tab icon={<BookIcon />} label="Журнал инструктажей" />
-          <Tab icon={<VerifiedIcon />} label="Регламентный" />
+        <Tabs
+          value={effectiveTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          {visibleTabs.map((t) => (
+            <Tab key={t.index} icon={t.icon} label={t.label} />
+          ))}
         </Tabs>
       </Paper>
 
-      {/* === КАРТОЧКА СОТРУДНИКА === */}
-      <TabPanel value={tab} index={0}>
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-            <TextField
-              label="ID сотрудника"
-              type="number"
-              value={cardId}
-              onChange={(e) => setCardId(e.target.value)}
-              size="small"
+      {/* === КАРТОЧКА СОТРУДНИКА (только admin/hr) === */}
+      {!isManager && (
+        <TabPanel value={effectiveTab} index={0}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+              <TextField
+                label="ID сотрудника"
+                type="number"
+                value={cardId}
+                onChange={(e) => setCardId(e.target.value)}
+                size="small"
+              />
+              <Button
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                onClick={() => cardId && downloadCard.mutate(parseInt(cardId))}
+                disabled={!cardId || downloadCard.isPending}
+              >
+                {downloadCard.isPending ? <CircularProgress size={20} /> : 'Скачать Excel'}
+              </Button>
+            </Box>
+
+            {cardLoading ? <CircularProgress /> : cardData && (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">{cardData.fullName}</Typography>
+                  <Typography color="text.secondary">Таб. №: {cardData.tabNumber}</Typography>
+                  <Divider sx={{ my: 1 }} />
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Отдел: {cardData.department?.name || '—'}</Typography></Grid>
+                    <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Должность: {cardData.position?.name || '—'}</Typography></Grid>
+                    <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Курсов: {cardData.courseAssignments?.length || 0}</Typography></Grid>
+                    <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Просрочек: {cardData.courseAssignments?.filter((c: any) => c.status === 'OVERDUE').length || 0}</Typography></Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            )}
+          </Paper>
+        </TabPanel>
+      )}
+
+      {/* === ДОЛЖНИКИ (только admin/hr) === */}
+      {!isManager && (
+        <TabPanel value={effectiveTab} index={1}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Список должников</Typography>
+              <Button
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                onClick={() => downloadDebtors.mutate()}
+                disabled={downloadDebtors.isPending}
+              >
+                {downloadDebtors.isPending ? <CircularProgress size={20} /> : 'Excel'}
+              </Button>
+            </Box>
+            <DataGrid
+              rows={debtors || []}
+              columns={debtorsColumns}
+              loading={debtorsLoading}
+              pageSizeOptions={[10, 25, 50]}
+              autoHeight
+              disableRowSelectionOnClick
             />
-            <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              onClick={() => cardId && downloadCard.mutate(parseInt(cardId))}
-              disabled={!cardId || downloadCard.isPending}
-            >
-              {downloadCard.isPending ? <CircularProgress size={20} /> : 'Скачать Excel'}
-            </Button>
-          </Box>
+          </Paper>
+        </TabPanel>
+      )}
 
-          {cardLoading ? <CircularProgress /> : cardData && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6">{cardData.fullName}</Typography>
-                <Typography color="text.secondary">Таб. №: {cardData.tabNumber}</Typography>
-                <Divider sx={{ my: 1 }} />
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Отдел: {cardData.department?.name || '—'}</Typography></Grid>
-                  <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Должность: {cardData.position?.name || '—'}</Typography></Grid>
-                  <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Курсов: {cardData.courseAssignments?.length || 0}</Typography></Grid>
-                  <Grid size={{ xs: 6, md: 3 }}><Typography variant="body2">Просрочек: {cardData.courseAssignments?.filter((c: any) => c.status === 'OVERDUE').length || 0}</Typography></Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          )}
-        </Paper>
-      </TabPanel>
-
-      {/* === ДОЛЖНИКИ === */}
-      <TabPanel value={tab} index={1}>
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6">Список должников</Typography>
-            <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              onClick={() => downloadDebtors.mutate()}
-              disabled={downloadDebtors.isPending}
-            >
-              {downloadDebtors.isPending ? <CircularProgress size={20} /> : 'Excel'}
-            </Button>
-          </Box>
-          <DataGrid
-            rows={debtors || []}
-            columns={debtorsColumns}
-            loading={debtorsLoading}
-            pageSizeOptions={[10, 25, 50]}
-            autoHeight
-            disableRowSelectionOnClick
-          />
-        </Paper>
-      </TabPanel>
-
-      {/* === ПО ОТДЕЛУ === */}
-      <TabPanel value={tab} index={2}>
+      {/* === ПО ОТДЕЛУ (все роли) === */}
+      <TabPanel value={effectiveTab} index={2}>
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
             <TextField
@@ -167,11 +211,12 @@ export function ReportsPage() {
               size="small"
               sx={{ minWidth: 200 }}
               SelectProps={{ native: true }}
+              disabled={isManager}
             >
               <option value="">Выберите отдел</option>
-              {/* TODO: заменить на реальные отделы */}
-              <option value="1">Отдел 1</option>
-              <option value="2">Отдел 2</option>
+              {departments?.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
             </TextField>
             <Button
               variant="contained"
@@ -193,82 +238,86 @@ export function ReportsPage() {
         </Paper>
       </TabPanel>
 
-      {/* === ЖУРНАЛ ИНСТРУКТАЖЕЙ === */}
-      <TabPanel value={tab} index={3}>
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-            <TextField
-              label="С"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="По"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              onClick={() => startDate && endDate && downloadBriefings.mutate({ startDate, endDate })}
-              disabled={!startDate || !endDate || downloadBriefings.isPending}
-            >
-              {downloadBriefings.isPending ? <CircularProgress size={20} /> : 'Excel'}
-            </Button>
-          </Box>
-          {briefings && (
-            <DataGrid
-              rows={briefings}
-              columns={[
-                { field: 'id', headerName: 'ID', width: 70 },
-                { field: 'employee', headerName: 'Сотрудник', width: 200, valueGetter: (_v, r) => r.employee?.fullName || '—' },
-                { field: 'type', headerName: 'Тип', width: 150 },
-                { field: 'date', headerName: 'Дата', width: 130, valueGetter: (_v, r) => r.date ? new Date(r.date).toLocaleDateString('ru-RU') : '—' },
-              ]}
-              loading={briefLoading}
-              autoHeight
-              disableRowSelectionOnClick
-            />
-          )}
-        </Paper>
-      </TabPanel>
+      {/* === ЖУРНАЛ ИНСТРУКТАЖЕЙ (только admin/hr) === */}
+      {!isManager && (
+        <TabPanel value={effectiveTab} index={3}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+              <TextField
+                label="С"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="По"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                onClick={() => startDate && endDate && downloadBriefings.mutate({ startDate, endDate })}
+                disabled={!startDate || !endDate || downloadBriefings.isPending}
+              >
+                {downloadBriefings.isPending ? <CircularProgress size={20} /> : 'Excel'}
+              </Button>
+            </Box>
+            {briefings && (
+              <DataGrid
+                rows={briefings}
+                columns={[
+                  { field: 'id', headerName: 'ID', width: 70 },
+                  { field: 'employee', headerName: 'Сотрудник', width: 200, valueGetter: (_v, r) => r.employee?.fullName || '—' },
+                  { field: 'type', headerName: 'Тип', width: 150 },
+                  { field: 'date', headerName: 'Дата', width: 130, valueGetter: (_v, r) => r.date ? new Date(r.date).toLocaleDateString('ru-RU') : '—' },
+                ]}
+                loading={briefLoading}
+                autoHeight
+                disableRowSelectionOnClick
+              />
+            )}
+          </Paper>
+        </TabPanel>
+      )}
 
-      {/* === РЕГЛАМЕНТНЫЙ === */}
-      <TabPanel value={tab} index={4}>
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6">Регламентный отчёт</Typography>
-            <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              onClick={() => downloadRegulatory.mutate()}
-              disabled={downloadRegulatory.isPending}
-            >
-              {downloadRegulatory.isPending ? <CircularProgress size={20} /> : 'Excel'}
-            </Button>
-          </Box>
-          {regulatory && (
-            <DataGrid
-              rows={regulatory}
-              columns={[
-                { field: 'id', headerName: 'ID', width: 70 },
-                { field: 'employee', headerName: 'Сотрудник', width: 200, valueGetter: (_v, r) => r.employee?.fullName || '—' },
-                { field: 'course', headerName: 'Курс', width: 200, valueGetter: (_v, r) => r.course?.name || '—' },
-                { field: 'factDate', headerName: 'Дата прохождения', width: 150, valueGetter: (_v, r) => r.factDate ? new Date(r.factDate).toLocaleDateString('ru-RU') : '—' },
-              ]}
-              loading={regLoading}
-              autoHeight
-              disableRowSelectionOnClick
-            />
-          )}
-        </Paper>
-      </TabPanel>
+      {/* === РЕГЛАМЕНТНЫЙ (только admin/hr) === */}
+      {!isManager && (
+        <TabPanel value={effectiveTab} index={4}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Регламентный отчёт</Typography>
+              <Button
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                onClick={() => downloadRegulatory.mutate()}
+                disabled={downloadRegulatory.isPending}
+              >
+                {downloadRegulatory.isPending ? <CircularProgress size={20} /> : 'Excel'}
+              </Button>
+            </Box>
+            {regulatory && (
+              <DataGrid
+                rows={regulatory}
+                columns={[
+                  { field: 'id', headerName: 'ID', width: 70 },
+                  { field: 'employee', headerName: 'Сотрудник', width: 200, valueGetter: (_v, r) => r.employee?.fullName || '—' },
+                  { field: 'course', headerName: 'Курс', width: 200, valueGetter: (_v, r) => r.course?.name || '—' },
+                  { field: 'factDate', headerName: 'Дата прохождения', width: 150, valueGetter: (_v, r) => r.factDate ? new Date(r.factDate).toLocaleDateString('ru-RU') : '—' },
+                ]}
+                loading={regLoading}
+                autoHeight
+                disableRowSelectionOnClick
+              />
+            )}
+          </Paper>
+        </TabPanel>
+      )}
     </Box>
   )
 }

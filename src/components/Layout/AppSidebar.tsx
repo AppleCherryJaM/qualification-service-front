@@ -24,6 +24,9 @@ import {
   Settings as SettingsIcon,
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
+  Business,
+  Work,
+  Category,
 } from '@mui/icons-material'
 import { useAuthStore } from '../../stores/authStore'
 import { hasRole } from '../../utils/roles'
@@ -42,8 +45,13 @@ const navItems: NavItem[] = [
   { label: 'Сотрудники', path: '/employees', icon: <PeopleIcon />, roles: ['admin', 'hr', 'manager'] },
   { label: 'Курсы', path: '/courses', icon: <SchoolIcon />, roles: ['admin', 'hr', 'manager', 'employee'] },
   { label: 'Назначения', path: '/assignments', icon: <AssignmentIcon />, roles: ['admin', 'hr', 'manager'] },
+  { label: 'Подразделения', path: '/departments', icon: <Business />, roles: ['admin', 'hr'] },
+  { label: 'Должности', path: '/positions', icon: <Work />, roles: ['admin', 'hr'] },
+  { label: 'Виды обучения', path: '/training-types', icon: <Category />, roles: ['admin', 'hr'] },
+  { label: 'Инструктажи', path: '/briefings', icon: <Work />, roles: ['admin', 'hr', 'manager'] },
+  { label: 'Стажировки', path: '/internships', icon: <SchoolIcon />, roles: ['admin', 'hr', 'manager'] },
   { label: 'Тесты', path: '/tests', icon: <QuizIcon />, roles: ['admin', 'hr', 'manager', 'employee'] },
-  { label: 'Отчёты', path: '/reports', icon: <AssessmentIcon />, roles: ['admin', 'hr'] },
+  { label: 'Отчёты', path: '/reports', icon: <AssessmentIcon />, roles: ['admin', 'hr', 'manager'] },
   { label: 'Настройки', path: '/settings', icon: <SettingsIcon />, roles: ['admin'] },
 ]
 

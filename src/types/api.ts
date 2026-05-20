@@ -229,20 +229,24 @@ export interface CreateQuestionDto {
 export interface Briefing {
   id: number
   employeeId: number
+  employee?: Employee
   type: string
   date: string
   instructorId?: number
+  instructor?: Employee
 }
 
 // === INTERNSHIPS ===
 export interface Internship {
   id: number
   employeeId: number
+  employee?: Employee
   startDate: string
   endDate: string
-  shifts: number
+  shiftsCount: number
   mentorId?: number
-  result?: string
+  mentor?: Employee
+  passed?: boolean 
 }
 
 // === NOTIFICATIONS ===
